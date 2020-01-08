@@ -1,5 +1,7 @@
 import numpy as np
+import random
 import matplotlib.pyplot as plt
+import dataFormatter as ffd
 #import fakedata as ffd
 import lstm_ricky as lry
 
@@ -154,23 +156,23 @@ class NeuralNetwork:
 if __name__ == '__main__':
     memory = lry.Lstm_ricky()
     #data = ffd.Data()
-    size_fake = 2000
+    size_fake = 1000
     #data.generate_fake_data(size_fake)
     epoch = 1
-    batch = 20000
+    batch = 100
     #for _ in range(7000):
     #    memory.short_memory(data.data_input[_], data.data_output[_])
     #print(memory.short_memory_idx(data.data_input[6999]))
     neural = NeuralNetwork(
         {
-            "size": [7, 20, 20, 20, 40, 7],
+            "size": [size_fake, 10, 10, 10, 10, size_fake],
             "activation": ["input", "relu", "relu", "relu", "sigmoid" , "sigmoid"],
         }
     );
     for _ in range(batch):
-        print(_)
-        #data.generate_fake_data(size_fake)
-        neural.train(np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0], [0, 0, 1], [1,1,1], [0,0,0], [1,0,1]]), np.array([[0],[0],[1],[1],[0],[1], [1]]) , epoch)
+        ffd.multi, ffd.output = ffd.fakeDataMaker(size_fake)
+        print("Index "+str(_))
+        neural.train(np.array(ffd.multi), np.array(ffd.output) , epoch)
 
     plt.figure(1)
     plt.plot(range(0, epoch*batch), neural.losses)
@@ -179,5 +181,3 @@ if __name__ == '__main__':
     plt.figure(2)
     plt.plot(range(0, epoch*batch), neural.accurency)
     plt.show()
-
-    pass
