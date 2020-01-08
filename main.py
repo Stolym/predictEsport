@@ -47,12 +47,12 @@ def first_try(dataset):
                 text_vector.append(game)
                 game = []
             gameid_list.append(row[gameid_col])
-            print(row[gameid_col])
+            #print(row[gameid_col])
             game.append(row[preprocess.text_to_int("team")])
             game.append(row[preprocess.text_to_int("player")])
             win_vector.append(row[preprocess.text_to_int("result")])
         else:
-            if row[preprocess.text_to_int("player")] != "Team":
+            if row[preprocess.text_to_int("player")] != "team" and row[preprocess.text_to_int("player")] != "team":
                 game.append(row[preprocess.text_to_int("team")])
                 game.append(row[preprocess.text_to_int("player")])
     return text_vector, win_vector
@@ -79,16 +79,16 @@ def first_try(dataset):
 
 
 def extract_all():
-    dataset = extract_dataset("src/2019-worlds.csv")
-    dataset += extract_dataset("src/2019-summer.csv")
-    dataset += extract_dataset("src/2019-spring.csv")
+    #dataset = extract_dataset("src/2019-worlds.csv")
+    #dataset = extract_dataset("src/2019-summer.csv")
+    #dataset += extract_dataset("src/2019-spring.csv")
     dataset = extract_dataset("src/2018-worlds.csv")
     dataset += extract_dataset("src/2018-summer.csv")
     dataset += extract_dataset("src/2018-spring.csv")
     dataset += extract_dataset("src/2017-year.csv")
-    dataset += extract_dataset("src/2016-year.csv")
+    #dataset += extract_dataset("src/2016-year.csv")
     #tests(dataset)
-
+    return dataset
 
 if __name__ == "__main__":
     extract_all()

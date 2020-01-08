@@ -91,7 +91,7 @@ class NeuralNetwork:
     def derivate_relu(self, _DA, x):
         DZ = np.array(_DA, copy = True)
         DZ[x < 0] = 0
-        DZ[x > 0] = 1
+        #DZ[x > 0] = 1
         return DZ
 
     def derivate_sigmoid(self, _DA, x):
@@ -105,14 +105,21 @@ class NeuralNetwork:
         return cost
 
 
+    def predict(self, input):
+        self.layer["A0"] = input
+        for i in range(1, len(self.activations)):
+            self.forwardLayer(i)
+        return self.layer["A"+str(len(self.activations)-1)]
+
     def train(self, input, output, epoch):
         for _ in range(epoch):
             self.layer["A0"] = input
             for i in range(1, len(self.activations)):
                 self.forwardLayer(i)
-            #print(self.compute_cost(np.array([[1], [1], [0], [0]]), self.layer["A"+str(len(self.activations)-1)]))
+            #print(self.compute_cost(output, self.layer["A"+str(len(self.activations)-1)]))
             self.layer["COST"]=np.subtract(output, self.layer["A"+str(len(self.activations)-1)])
             self.layer["LOSS"]=np.subtract(output, self.layer["A"+str(len(self.activations)-1)])**2
+
             self.losses.append(np.sum(self.layer["LOSS"]))
             self.accurency.append(1 - np.mean(self.layer["LOSS"]))
             self.cost.append(np.sum(np.abs(self.layer["COST"])))
@@ -123,8 +130,8 @@ class NeuralNetwork:
 
     def learn(self):
         for i in range(1, len(self.activations)):
-            self.layer["W"+str(i)] -= self.layer["DW"+str(i)] * 1e-3
-            self.layer["B"+str(i)] -= self.layer["DB"+str(i)] * 1e-3
+            self.layer["W"+str(i)] -= self.layer["DW"+str(i)] * 1e-8
+            self.layer["B"+str(i)] -= self.layer["DB"+str(i)] * 1e-8
 
 
     def forwardLayer(self, i):
@@ -148,31 +155,34 @@ class NeuralNetwork:
         x[x < 0] = 0
         return x
 
-    def predict(self):
-        pass
 
 
 
 if __name__ == '__main__':
     memory = lry.Lstm_ricky()
     #data = ffd.Data()
-    size_fake = 1000
+    size_fake = 100
     #data.generate_fake_data(size_fake)
-    epoch = 1
-    batch = 100
+    epoch = 100
+    batch = 3000
     #for _ in range(7000):
     #    memory.short_memory(data.data_input[_], data.data_output[_])
     #print(memory.short_memory_idx(data.data_input[6999]))
     neural = NeuralNetwork(
         {
-            "size": [size_fake, 10, 10, 10, 10, size_fake],
-            "activation": ["input", "relu", "relu", "relu", "sigmoid" , "sigmoid"],
+            "size": [1, 20, 20, 40, 80, 40, 1],
+            "activation": ["input", "relu", "relu", "sigmoid", "sigmoid" , "sigmoid", "sigmoid"],
         }
     );
     for _ in range(batch):
-        ffd.multi, ffd.output = ffd.fakeDataMaker(size_fake)
-        print("Index "+str(_))
-        neural.train(np.array(ffd.multi), np.array(ffd.output) , epoch)
+        print("Train epoch "+str(_))
+        neural.train(np.array([ffd.multi[_]]), np.array([ffd.output[_]]) , epoch)
+
+    sum = 0
+    for _ in range(100):
+        print("Test epoch "+str(_))
+        sum += ffd.test_output[_][0] - neural.predict(np.array([ffd.test_multi[_]])).shape[0]
+    print(sum)
 
     plt.figure(1)
     plt.plot(range(0, epoch*batch), neural.losses)
