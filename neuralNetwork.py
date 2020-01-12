@@ -3,6 +3,7 @@ import random
 import matplotlib.pyplot as plt
 import dataFormatter as ffd
 #import fakedata as ffd
+import time
 import lstm_ricky as lry
 
 class HiddenLayer:
@@ -29,7 +30,8 @@ class HiddenLayer:
         self.bias = np.random.randint(1, 5, size=(self.batch, self.size))
 
     def derivate_tanh(self, x):
-        return 1-x**2
+        return 1-np.tanh(x)**2
+
     def derivate_relu(self, x):
         x[x < 0] = 0
         x[x > 0] = 1
@@ -65,10 +67,10 @@ class NeuralNetwork:
     def mountLayer(self, params):
         self.layer={}
         self.activations = params["activation"]
-        print(self.activations)
+        #print(self.activations)
         for i in range(1, len(params["size"])):
-            self.layer["W"+str(i)] = np.random.rand(params["size"][i], params["size"][i - 1]) * 2 - 1
-            self.layer["B"+str(i)] = np.zeros((params["size"][i],1))
+            self.layer["W"+str(i)] = np.array(np.random.rand(params["size"][i], params["size"][i - 1]), dtype=np.float64) * 2 - 1
+            self.layer["B"+str(i)] = np.array(np.zeros((params["size"][i],1)), dtype=np.float64)
 
     def backpropLayer(self, i):
         _DA = self.layer["DA"+str(i)]
@@ -86,16 +88,28 @@ class NeuralNetwork:
             self.layer["DW"+str(i)] = np.dot(self.layer["DZ"+str(i)], _A.T)/_A.shape[0]
             self.layer["DB"+str(i)] = np.sum(self.layer["DZ"+str(i)], axis=1, keepdims=True)/_A.shape[0]
             self.layer["DA"+str(i - 1)] = np.dot(W.T, self.layer["DZ"+str(i)])
+        elif (activation == "tanh"):
+            self.layer["DZ"+str(i)] = self.derivate_tanh(_DA, Z)
+            self.layer["DW"+str(i)] = np.dot(self.layer["DZ"+str(i)], _A.T)/_A.shape[0]
+            self.layer["DB"+str(i)] = np.sum(self.layer["DZ"+str(i)], axis=1, keepdims=True)/_A.shape[0]
+            self.layer["DA"+str(i - 1)] = np.dot(W.T, self.layer["DZ"+str(i)])
+        elif (activation == "mish"):
+            self.layer["DZ"+str(i)] = self.derivate_mish(_DA, Z)
+            self.layer["DW"+str(i)] = np.dot(self.layer["DZ"+str(i)], _A.T)/_A.shape[0]
+            self.layer["DB"+str(i)] = np.sum(self.layer["DZ"+str(i)], axis=1, keepdims=True)/_A.shape[0]
+            self.layer["DA"+str(i - 1)] = np.dot(W.T, self.layer["DZ"+str(i)])
 
+    def derivate_tanh(self, _DA, x):
+        return _DA * (1 - np.tanh(x)**2)
 
     def derivate_relu(self, _DA, x):
-        DZ = np.array(_DA, copy = True)
+        DZ = np.array(_DA, copy = True, dtype=np.float64)
         DZ[x < 0] = 0
         #DZ[x > 0] = 1
         return DZ
 
     def derivate_sigmoid(self, _DA, x):
-        return _DA * self.sigmoid(x)*(1-self.sigmoid(x))
+        return _DA * (self.sigmoid(x)*(1-self.sigmoid(x)))
 
     def compute_cost(self, Y, A):
         m = Y.shape[1]
@@ -117,12 +131,15 @@ class NeuralNetwork:
             for i in range(1, len(self.activations)):
                 self.forwardLayer(i)
             #print(self.compute_cost(output, self.layer["A"+str(len(self.activations)-1)]))
+            #print(output)
+            #print(self.layer["A"+str(len(self.activations)-1)])
             self.layer["COST"]=np.subtract(output, self.layer["A"+str(len(self.activations)-1)])
-            self.layer["LOSS"]=np.subtract(output, self.layer["A"+str(len(self.activations)-1)])**2
+            self.layer["LOSS"]=np.abs(np.subtract(output, self.layer["A"+str(len(self.activations)-1)]))
 
             self.losses.append(np.sum(self.layer["LOSS"]))
             self.accurency.append(1 - np.mean(self.layer["LOSS"]))
             self.cost.append(np.sum(np.abs(self.layer["COST"])))
+            #self.layer["DA" + str(len(self.activations) - 1)] = np.subtract(output, self.layer["A"+str(len(self.activations)-1)]) * self.sigmoid(self.layer["A"+str(len(self.activations)-1)])*(1-self.sigmoid(self.layer["A"+str(len(self.activations)-1)]))
             self.layer["DA"+str(len(self.activations) - 1)]= - (np.divide(output, self.layer["A"+str(len(self.activations)-1)]) - np.divide(1 - output, 1 - self.layer["A"+str(len(self.activations)-1)]))
             for i in range(len(self.activations) - 1, 0, -1):
                 self.backpropLayer(i)
@@ -130,8 +147,8 @@ class NeuralNetwork:
 
     def learn(self):
         for i in range(1, len(self.activations)):
-            self.layer["W"+str(i)] -= self.layer["DW"+str(i)] * 1e-8
-            self.layer["B"+str(i)] -= self.layer["DB"+str(i)] * 1e-8
+            self.layer["W"+str(i)] -= self.layer["DW"+str(i)] * 1e-5
+            self.layer["B"+str(i)] -= self.layer["DB"+str(i)] * 1e-5
 
 
     def forwardLayer(self, i):
@@ -146,7 +163,24 @@ class NeuralNetwork:
         elif (activation == "sigmoid"):
             self.layer['Z' + str(i)] = np.dot(W, _A) + B
             self.layer['A' + str(i)] = self.sigmoid(self.layer["Z" + str(i)])
+        elif (activation == "tanh"):
+            self.layer['Z' + str(i)] = np.dot(W, _A) + B
+            self.layer['A' + str(i)] = np.tanh(self.layer["Z" + str(i)])
+        elif (activation == "mish"):
+            self.layer['Z' + str(i)] = np.dot(W, _A) + B
+            self.layer['A' + str(i)] = self.mish(self.layer["Z" + str(i)])
+            #print(self.layer['A' + str(i)])
 
+
+    def mish(self, x):
+        print(x)
+        return x * np.tanh(np.log(1.0 + np.exp(x)))
+
+    def derivate_mish(self, _DA, x):
+        omega = np.exp(3 * x) + 4 * np.exp(2 * x) + (6 + 4 * x) * np.exp(x) + 4 * (1 + x)
+        delta = 1 + (np.exp(x) + 1)**2
+        derivative = np.exp(x) * omega / delta**2
+        return derivative * _DA
 
     def sigmoid(self, x):
         return 1/(1 + np.exp(-x))
@@ -161,28 +195,33 @@ class NeuralNetwork:
 if __name__ == '__main__':
     memory = lry.Lstm_ricky()
     #data = ffd.Data()
-    size_fake = 100
+    size_fake = 1
     #data.generate_fake_data(size_fake)
-    epoch = 100
-    batch = 3000
+    epoch = 1
+    batch = 100
     #for _ in range(7000):
     #    memory.short_memory(data.data_input[_], data.data_output[_])
     #print(memory.short_memory_idx(data.data_input[6999]))
     neural = NeuralNetwork(
         {
-            "size": [1, 20, 20, 40, 80, 40, 1],
-            "activation": ["input", "relu", "relu", "sigmoid", "sigmoid" , "sigmoid", "sigmoid"],
+            "size": [20, 400, 200, 200, 100, 80, 80, 40, 40, 20, 1],
+            "activation": ["input", "sigmoid", "tanh", "relu", "sigmoid", "tanh", "relu", "sigmoid", "tanh", "relu", "sigmoid"],
         }
     );
+    #ffd.multi=[[1, 0], [0, 1], [1, 1], [0, 0]]
+    #ffd.output=[[1], [1], [0], [0]]
     for _ in range(batch):
-        print("Train epoch "+str(_))
-        neural.train(np.array([ffd.multi[_]]), np.array([ffd.output[_]]) , epoch)
+        if (_ % (batch/100) == 0):
+            print("Train epoch "+str(_))
+        neural.train(np.array(ffd.multi, dtype=np.float64).T, np.array(ffd.output, dtype=np.float64).T, epoch)
 
     sum = 0
+    loss_test = []
     for _ in range(100):
         print("Test epoch "+str(_))
-        sum += ffd.test_output[_][0] - neural.predict(np.array([ffd.test_multi[_]])).shape[0]
-    print(sum)
+        loss_test.append(np.abs(ffd.test_output[_] - np.mean(neural.predict(np.array([ffd.test_multi[_]], dtype=np.float64).T))))
+        sum += np.abs(ffd.test_output[_] - np.mean(neural.predict(np.array([ffd.test_multi[_]]).T)))
+    print("TOTAL if is closest to 0 its good "+str(sum[0]))
 
     plt.figure(1)
     plt.plot(range(0, epoch*batch), neural.losses)
@@ -190,4 +229,6 @@ if __name__ == '__main__':
     plt.plot(range(0, epoch*batch), neural.cost)
     plt.figure(2)
     plt.plot(range(0, epoch*batch), neural.accurency)
+    plt.figure(3)
+    plt.plot(range(0, 100), loss_test)
     plt.show()
