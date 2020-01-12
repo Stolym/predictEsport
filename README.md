@@ -1,6 +1,6 @@
 # predictEsport
 
 
-- Neural Network v0.0.1
+- Neural Network v0.0.2
 - DataFormater Check On
-- First estimate value for test is 0.63%
+- First estimate value for test is 0.62%
